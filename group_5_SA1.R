@@ -182,3 +182,60 @@ myeloid_clean = myeloid[, c("futime", "death")]
 
 # Create survival object
 SurvObj_myeloid = Surv(time = myeloid_clean$futime, event = myeloid_clean$death)
+# 3: Fit Multiple Parametric Models
+fits = list(
+  Exponential = flexsurvreg(SurvObj_myeloid ~ 1, dist = "exp"),
+  Weibull     = flexsurvreg(SurvObj_myeloid ~ 1, dist = "weibull"),
+  LogNormal   = flexsurvreg(SurvObj_myeloid ~ 1, dist = "lnorm"),
+  LogLogistic = flexsurvreg(SurvObj_myeloid ~ 1, dist = "llogis"),
+  Gamma       = flexsurvreg(SurvObj_myeloid ~ 1, dist = "gamma"),
+  GenGamma    = flexsurvreg(SurvObj_myeloid ~ 1, dist = "gengamma"),
+  Gompertz    = flexsurvreg(SurvObj_myeloid ~ 1, dist = "gompertz"))
+
+# Table of MLE estimates, log-likelihood, AIC
+get_param = function(fit, i) {
+  if (nrow(fit$res) >= i) {
+    paste0(rownames(fit$res)[i], " = ", format(round(fit$res[i, "est"], 4), scientific = FALSE))
+  } else {
+    NA
+  }
+}
+
+model_table = data.frame(
+  Model = names(fits),
+  `Parameter 1 Estimate` = sapply(fits, function(f) get_param(f, 1)),
+  `Parameter 2 Estimate` = sapply(fits, function(f) get_param(f, 2)),
+  `Parameter 3 Estimate` = sapply(fits, function(f) get_param(f, 3)),
+  LogLik = sapply(fits, function(f) round(f$loglik, 3)),
+  AIC = sapply(fits, function(f) round(AIC(f), 3)),
+  row.names = NULL,
+  check.names = FALSE)
+
+kable(model_table, row.names = FALSE,
+      caption = "<span style='color:black; font-weight:bold;'>Parametric Model Comparison (MLE, LogLik, AIC)</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
+
+# 4: Model Selection
+aic_values = sapply(fits, AIC)
+best_model_name = names(which.min(aic_values))
+best_model = fits[[best_model_name]]
+
+cat("Best model according to AIC:", best_model_name, "\n")
+
+# Visual comparison: all models vs Kaplan-Meier
+par(mfrow = c(1, 1))
+plot(survfit(SurvObj_myeloid ~ 1),
+     xlab = "Time (days)", ylab = "S(t)",
+     main = "All Parametric Models vs Kaplan-Meier",
+     col = "black", lwd = 2.5, conf.int = FALSE)
+
+colors = c("pink", "blue", "green", "orange", "purple", "brown", "red")
+for (i in seq_along(fits)) {
+  lines(fits[[i]], col = colors[i], lwd = 2, ci = FALSE)
+}
+legend("topright",
+       legend = c("Kaplan-Meier", names(fits)),
+       col = c("black", colors),
+       lwd = 2, cex = 0.75)
