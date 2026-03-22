@@ -1,4 +1,4 @@
-# Group 5 Survival Analysis
+# Group 5 Survival Analysis Project
 ## Project Title: Parametric Survival Analysis of Acute Myelogenous Leukaemia (AML) Remission Data
 
 This project applies parametric survival analysis to the `myeloid` dataset from the `survival` R package, containing data on 646 AML patients enrolled in a randomised clinical trial.
