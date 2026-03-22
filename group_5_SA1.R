@@ -239,3 +239,59 @@ legend("topright",
        legend = c("Kaplan-Meier", names(fits)),
        col = c("black", colors),
        lwd = 2, cex = 0.75)
+
+
+# 5: Life Functions of Best Model
+time_seq = seq(0.001, max(myeloid_clean$futime), by = 1)
+
+S_t = summary(best_model, t = time_seq, type = "survival", ci = FALSE)[[1]]$est
+h_t = summary(best_model, t = time_seq, type = "hazard",   ci = FALSE)[[1]]$est
+f_t = h_t * S_t
+F_t = 1 - S_t
+
+# Mean and variance
+dt = diff(time_seq)[1]
+mean_T = sum(time_seq * f_t) * dt
+second_moment = sum((time_seq^2) * f_t) * dt
+var_T = second_moment - mean_T^2
+sd_T = sqrt(var_T)
+sd_T
+
+# Mean and variance table
+life_summary = data.frame(
+  Metric = c("Best Model", "Mean Survival Time (days)", "Variance (days^2)"),
+  Value = c(best_model_name, round(mean_T, 2), round(var_T, 2)))
+kable(life_summary, row.names = FALSE,
+      caption = "<span style='color:black; font-weight:bold;'>Life Function Summary</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
+
+# 2x2 plots
+par(mfrow = c(2, 2))
+plot(time_seq, S_t, type = "l", col = "blue",   lwd = 2,
+     xlab = "Time (days)", ylab = "S(t)", main = "Survival Function")
+plot(time_seq, h_t, type = "l", col = "red",    lwd = 2,
+     xlab = "Time (days)", ylab = "h(t)", main = "Hazard Function")
+plot(time_seq, f_t, type = "l", col = "green",  lwd = 2,
+     xlab = "Time (days)", ylab = "f(t)", main = "Density Function")
+plot(time_seq, F_t, type = "l", col = "purple", lwd = 2,
+     xlab = "Time (days)", ylab = "F(t)", main = "CDF Function")
+
+# 6: Interpretation
+
+# Full best model output
+print(best_model)
+
+# Survival probabilities at key time points
+key_times = c(30, 90, 180, 365, 730, 1095)
+surv_table = data.frame(
+  Time_days = key_times,
+  S_t = sapply(key_times, function(kt) round(S_t[which.min(abs(time_seq - kt))], 4)),
+  F_t = sapply(key_times, function(kt) round(F_t[which.min(abs(time_seq - kt))], 4)),
+  h_t = sapply(key_times, function(kt) round(h_t[which.min(abs(time_seq - kt))], 6)))
+kable(surv_table, row.names = FALSE,
+      caption = "<span style='color:black; font-weight:bold;'>Survival Probabilities at Key Time Points</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
