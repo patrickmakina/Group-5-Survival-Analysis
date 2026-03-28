@@ -19,4 +19,4 @@ A Cox proportional hazards model was fitted to evaluate the simultaneous effects
 
 Refinement strategies including stratification and time-dependent coefficients were demonstrated to address potential assumption violations. The hazard trend was characterised using the best-fitting parametric model from Project 1, and clinical implications of the final model were interpreted.
 
-### Packages used in R: survival, flexsurv, knitr, kableExtra, dplyr, muhaz
+#### Packages used in R: `survival`, `flexsurv`, `knitr`, `kableExtra`, `dplyr`, `muhaz`
