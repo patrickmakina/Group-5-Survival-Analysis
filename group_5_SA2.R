@@ -117,3 +117,66 @@ legend("topright",
        legend = c("Low", "Moderate", "High", "50% survival"),
        col = c("forestgreen", "dodgerblue", "firebrick", "magenta"),
        lty = c(1, 1, 1, 3), lwd = 2, cex = 0.85)
+
+# STEP 2: Non-Parametric Analysis (Nelson-Aalen Estimator)
+
+# Nelson-Aalen cumulative hazard estimate
+na_fit = survfit(SurvObj ~ 1, data = myeloid, type = "fleming-harrington")
+
+# Cumulative hazard H(t) = -log(S(t))
+na_time = na_fit$time
+na_cumhaz = na_fit$cumhaz
+
+# Plot cumulative hazard
+par(mfrow = c(1, 1))
+plot(na_time, na_cumhaz,
+     type = "l", col = "darkred", lwd = 2,
+     xlab = "Time (days)", ylab = "Cumulative Hazard H(t)",
+     main = "Nelson-Aalen Cumulative Hazard Estimate")
+
+# Nelson-Aalen cumulative hazard and derived hazard at key time points
+key_times = c(30, 90, 180, 365, 730, 1095)
+na_at_keys = summary(na_fit, times = key_times)
+
+# Non-parametric hazard derived from Nelson-Aalen: h(t) = dH(t)/dt
+# Approximate using differences
+na_h_t = diff(c(0, na_at_keys$cumhaz)) / diff(c(0, key_times))
+
+# Gompertz hazard at same time points
+
+# Fit best model from Project 1 (Gompertz)
+best_model = flexsurvreg(SurvObj ~ 1, dist = "gompertz")
+time_seq   = seq(1, max(myeloid$futime), by = 1)
+gompertz_h_keys = summary(best_model, t = key_times,
+                          type = "hazard", ci = FALSE)[[1]]$est
+na_table = data.frame(
+  Time_days = key_times,
+  Cumulative_Hazard = round(na_at_keys$cumhaz, 4),
+  NA_Hazard = round(na_h_t, 6),
+  Gompertz_Hazard = round(gompertz_h_keys, 6))
+
+kable(na_table, row.names = FALSE,
+      col.names = c("Time (days)", "Cumulative Hazard H(t)",
+                    "Non-Parametric Hazard h(t)", "Gompertz Hazard h(t)"),
+      caption = "<span style='color:black; font-weight:bold;'>Nelson-Aalen Cumulative Hazard and Hazard Estimates vs Gompertz Parametric Hazard</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
+
+# Non-parametric hazard estimate using kernel smoothing (muhaz)
+haz_smooth = muhaz(myeloid$futime, myeloid$death)
+
+par(mfrow = c(1, 1))
+plot(haz_smooth,
+     col = "darkblue", lwd = 2,
+     xlab = "Time (days)", ylab = "Hazard Rate h(t)",
+     main = "Non-Parametric Hazard Estimate (Kernel Smoothed)")
+
+# Compare with Gompertz parametric hazard (best model from Project 1)
+gompertz_h = summary(best_model, t = time_seq,
+                     type = "hazard", ci = FALSE)[[1]]$est
+
+lines(time_seq, gompertz_h, col = "maroon", lwd = 2.5, lty = 2)
+legend("topright",
+       legend = c("Non-parametric (Kernel)", "Gompertz (Parametric)"),
+       col = c("darkblue", "maroon"), lty = c(1, 2), lwd = 2, cex = 0.85)
