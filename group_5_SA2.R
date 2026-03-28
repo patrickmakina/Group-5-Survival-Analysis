@@ -314,3 +314,96 @@ for (j in 1:ncol(dfbeta_vals)) {
   abline(h = 0, col = "red", lwd = 2.5, lty = 2)
 }
 
+
+
+
+
+# STEP 4: Semi-Parametric Analysis (Cox PH Model)
+
+# Univariable Cox models
+cox_trt = coxph(SurvObj ~ trt,  data = myeloid)
+summary(cox_trt)
+cox_sex = coxph(SurvObj ~ sex,  data = myeloid)
+summary(cox_sex)
+cox_flt3 = coxph(SurvObj ~ flt3, data = myeloid)
+summary(cox_flt3)
+
+# Univariable summary table
+fmt_pval = function(p) ifelse(p < 0.001, "<0.001", sprintf("%.4f", p))
+
+covariate_labels = c(
+  "trtExperimental" = "Treatment: Experimental vs Standard",
+  "sexMale" = "Sex: Male vs Female",
+  "flt3Moderate" = "FLT3 Mutation: Moderate vs Low",
+  "flt3High" = "FLT3 Mutation: High vs Low")
+
+extract_cox = function(model, label) {
+  s = summary(model)
+  coef_table = s$coefficients
+  conf_table = s$conf.int
+  raw_names = rownames(coef_table)
+  data.frame(
+    Covariate = covariate_labels[raw_names],
+    HR = round(conf_table[, "exp(coef)"], 3),
+    Lower_95 = round(conf_table[, "lower .95"], 3),
+    Upper_95 = round(conf_table[, "upper .95"], 3),
+    p_value = fmt_pval(coef_table[, "Pr(>|z|)"]))
+}
+
+univar_table = rbind(
+  extract_cox(cox_trt, "Treatment"),
+  extract_cox(cox_sex, "Sex"),
+  extract_cox(cox_flt3, "FLT3"))
+
+kable(univar_table, row.names = FALSE,
+      col.names = c("Covariate", "Hazard Ratio", "Lower 95% CI", "Upper 95% CI", "p-value"),
+      caption = "<span style='color:black; font-weight:bold;'>Univariable Cox PH Model Results</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
+
+# Multivariable Cox model
+cox_multi = coxph(SurvObj ~ trt + sex + flt3, data = myeloid)
+summary(cox_multi)
+multi_table = extract_cox(cox_multi, "Multivariable")
+
+kable(multi_table, row.names = FALSE,
+      col.names = c("Covariate", "Hazard Ratio", "Lower 95% CI", "Upper 95% CI", "p-value"),
+      caption = "<span style='color:black; font-weight:bold;'>Multivariable Cox PH Model Results</span>",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered")) %>%
+  row_spec(0, color = "black")
+
+# Proportional Hazards Assumption (Schoenfeld Residuals)
+ph_test = cox.zph(cox_multi)
+ph_test
+
+par(mfrow = c(2, 2))
+plot(ph_test,
+     var = 1, main = "PH Assumption: Treatment")
+plot(ph_test,
+     var = 2, main = "PH Assumption: Sex")
+plot(ph_test,
+     var = 3, main = "PH Assumption: FLT3 Mutation Level")
+
+# Influential Observations (dfbeta)
+dfbeta_vals = residuals(cox_multi, type = "dfbeta")
+
+dfbeta_labels = c(
+  "Treatment: Experimental vs Standard",
+  "Sex: Male vs Female",
+  "FLT3 Mutation: Moderate vs Low",
+  "FLT3 Mutation: High vs Low")
+
+par(mfrow = c(2,2))
+for (j in 1:ncol(dfbeta_vals)) {
+  plot(myeloid$futime, dfbeta_vals[, j],
+       xlab = "Follow-up Time (days)",
+       ylab = "dfbeta",
+       main = paste("Influential Observations:", dfbeta_labels[j]),
+       pch = 20, col = "darkblue",
+       cex.main = 0.85)
+  abline(h = 0, col = "red", lwd = 2.5, lty = 2)
+}
+
+
